@@ -9,6 +9,7 @@ use ratatui::{
     Frame
 };
 use tui_textarea::{Input, Key, TextArea};
+use crate::windows::PopupStatus;
 
 pub enum AddPopupStatus {
     Show,
@@ -17,19 +18,19 @@ pub enum AddPopupStatus {
 }
 
 pub struct AddCredPopup<'text_area> {
-    which: usize,
+    pub which: usize,
     pub email: TextArea<'text_area>,
     pub password: TextArea<'text_area>,
-    ch_popup_sender: mpsc::Sender<AddPopupStatus>
+    ch_popup_sender: mpsc::Sender<PopupStatus>,
 }
 
 impl<'text_area> AddCredPopup<'text_area> {
-    pub fn new(ch: mpsc::Sender<AddPopupStatus>) -> Self {
+    pub fn new(ch: mpsc::Sender<PopupStatus>) -> Self {
         Self {
             which: 0,
             email: TextArea::default(),
             password: TextArea::default(),
-            ch_popup_sender: ch
+            ch_popup_sender: ch,
         }
     }
 
@@ -78,10 +79,12 @@ impl<'text_area> AddCredPopup<'text_area> {
         // create textarea.
         self.email.set_placeholder_text("example@gmail.com");
         self.email.set_cursor_line_style(Style::default());
-        if self.is_valid() {
-        self.email.set_block(email_block);
-        self.password.set_block(password_block);
-        } 
+        if self.which > 1 {
+            self.email.set_block(email_block);
+            self.password.set_block(password_block);
+        } else {
+            let _ = self.is_valid();
+        }
         self.password.set_cursor_line_style(Style::default());
         self.password.set_mask_char('\u{2022}');
         // render widgets.
@@ -139,17 +142,17 @@ impl<'text_area> AddCredPopup<'text_area> {
 
     fn handle_input(&mut self) -> io::Result<()> {
         match crossterm::event::read()?.into() {
-            Input { key: Key::Tab, .. } => {
-                self.which = (self.which + 1) % 4;
-            },
+            // Input { key: Key::Tab, .. } => {
+            //    self.which = (self.which + 1) % 4;
+            // },
             Input { key: Key::Enter, .. } => {
                 if self.which == 2 {
                     if self.is_valid() {
-                        self.ch_popup_sender.send(AddPopupStatus::Save).unwrap();
-                        self.ch_popup_sender.send(AddPopupStatus::Exit).unwrap();
+                        self.ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Save)).unwrap();
+                        self.ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Exit)).unwrap();
                     }
                 } else if self.which == 3 {
-                    self.ch_popup_sender.send(AddPopupStatus::Exit).unwrap();
+                    self.ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Exit)).unwrap();
                 }
             },
             input => {

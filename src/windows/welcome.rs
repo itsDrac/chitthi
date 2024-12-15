@@ -14,12 +14,22 @@ use ratatui::{
     layout::Alignment,
 };
 use crate::chitthi::{Config, Cred, AuthList};
-use crate::components::{AddCredPopup, AddPopupStatus};
+use crate::components::{AddCredPopup, AddPopupStatus, Quit, QuitStatus};
 
 enum Popups<'text_area> {
     Add(AddCredPopup<'text_area>),
     View,
-    Quit,
+    Quit(Quit),
+}
+
+pub enum PopupStatus {
+    Add(AddPopupStatus),
+    Quit(QuitStatus),
+}
+
+pub enum Selection<'text_area> {
+    WelcomeScreen,
+    Popup(Popups<'text_area>),
 }
 
 pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -46,7 +56,7 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                 " View added accounts: ".into(),
                 "<V>".green().bold(),
                 " Quit: ".into(),
-                "<Q> ".red().bold()
+                "<Esc> ".red().bold()
             ]);
             let bottom_block = Block::bordered()
                 .title_bottom(instruction.white().centered())
@@ -58,7 +68,12 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                     Popups::Add(add_popup) => {
                         add_popup.draw(frame);
                     },
-                    _ => println!("WIP"),
+                    Popups::Quit(quit) => {
+                        quit.draw(frame);
+                    },
+                    Popups::View => {
+                        println!("View");
+                    },
                 }
             }
         })?;
@@ -66,27 +81,59 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
         if listion_for_input {
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    if key.code == KeyCode::Char('q') {
-                        return Ok(());
+                    if key.code == KeyCode::Esc {
+                        ch_popup_sender.send(PopupStatus::Quit(QuitStatus::Show)).unwrap();
                     } else if key.code == KeyCode::Char('a') {
-                        ch_popup_sender.send(AddPopupStatus::Show).unwrap();
+                        ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Show)).unwrap();
+                    } else if key.code == KeyCode::Tab {
+                        if let Some(popup) = &mut current_popup {
+                            match popup {
+                                Popups::Quit(quit) => {
+                                    quit.which = (quit.which + 1) % 2;
+                                },
+                                Popups::Add(add) => {
+                                    add.which = (add.which + 1) % 4;
+                                },
+                                _ => println!("WIP"),
+                            }
+                        }   
+                    } else if key.code == KeyCode::Enter {
+                        if let Some(popup) = &mut current_popup {
+                            match popup {
+                                Popups::Quit(quit) => {
+                                    if quit.which == 1 {
+                                        current_popup = None;
+                                        listion_for_input = true;
+                                    } else {
+                                        return Ok(());
+                                    }
+                                },
+                                Popups::Add(add) => {
+                                    if add.which == 3 {
+                                        current_popup = None;
+                                        listion_for_input = true;
+                                    }
+                                },
+                                _ => println!("WIP"),
+                            }
+                        }
                     }
                 }
             }
         }
         if let Ok(val) = ch_popup_receiver.try_recv() {
             match val {
-                AddPopupStatus::Show => {
+                PopupStatus::Add(AddPopupStatus::Show) => {
                     current_popup = Some(Popups::Add(
                             AddCredPopup::new(ch_popup_sender.clone())
                             ));
-                    listion_for_input = false;
+                    // listion_for_input = false;
                 },
-                AddPopupStatus::Exit => {
+                PopupStatus::Add(AddPopupStatus::Exit) => {
                     current_popup = None;
                     listion_for_input = true;
                 },
-                AddPopupStatus::Save => {
+                PopupStatus::Add(AddPopupStatus::Save) => {
                     if let Some(popup) = &mut current_popup {
                         if let Popups::Add(add_popup) = popup {
                             let email = &add_popup.email.lines()[0];
@@ -100,6 +147,16 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                             }
                         }
                     }
+                },
+                PopupStatus::Quit(QuitStatus::Show) => {
+                    current_popup = Some(Popups::Quit(Quit::new(ch_popup_sender.clone())));
+                },
+                PopupStatus::Quit(QuitStatus::Yes) => {
+                    return Ok(());
+                },
+                PopupStatus::Quit(QuitStatus::No) => {
+                    current_popup = None;
+                    listion_for_input = true;
                 },
             }
         }
