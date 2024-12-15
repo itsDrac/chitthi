@@ -93,9 +93,11 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                             let password = &add_popup.password.lines()[0];
                             let new_cred = Cred::new(email.to_string(), password.to_string());
                             let mut auth_list: AuthList = AuthList::new();
-                            auth_list.add_cred(&new_cred);
-                            auth_list.set_current(&new_cred);
-                            auth_list.write_file();
+                            if !auth_list.check_exist(&new_cred) {
+                                auth_list.add_cred(&new_cred);
+                                auth_list.set_current(&new_cred);
+                                auth_list.write_file();
+                            }
                         }
                     }
                 },

@@ -58,8 +58,30 @@ impl AuthList {
         self.auths.push(cred.clone());
     }
 
+    pub fn check_exist(&mut self, cred: &Cred) -> bool {
+        let mut is_exist = false;
+        self.auths.iter().for_each(|c| {
+            if c.email == cred.email {
+                is_exist = true;
+            }
+        });
+        is_exist
+    }
+
     pub fn set_current(&mut self, cred: &Cred) {
         self.current = Some(cred.id.clone());
+    }
+
+    pub fn get_current(&mut self) -> Option<Cred> {
+        let mut val: Option<Cred> = None;
+        if let Some(current) = &mut self.current {
+            self.auths.iter().for_each(|c| {
+                if c.id == current.to_string() {
+                    val = Some(c.clone());
+                }
+            });
+        }
+        val
     }
 
     pub fn write_file(&mut self) {

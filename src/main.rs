@@ -1,5 +1,5 @@
 use crate::windows::{screens};
-use crate::mail::mailbox;
+use crate::mail::{mailbox as mb, Mailbox};
 use crate::chitthi::{Config, Cred, AuthList};
 use std::io;
 use ratatui;
