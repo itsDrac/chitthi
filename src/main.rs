@@ -1,13 +1,13 @@
-use crate::windows::{screens};
+use crate::chitthi::{AuthList, Config, Cred};
 use crate::mail::{mailbox as mb, Mailbox};
-use crate::chitthi::{Config, Cred, AuthList};
-use std::io;
+use crate::windows::screens;
 use ratatui;
+use std::io;
 
-mod windows;
-mod mail;
 mod chitthi;
 mod components;
+mod mail;
+mod windows;
 
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();

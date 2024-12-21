@@ -1,15 +1,15 @@
-use std::rc::{Rc};
-use std::io;
-use std::sync::mpsc;
-use ratatui::{
-    style::{Style, Color, Stylize},
-    prelude::{Direction, Constraint},
-    layout::{Rect, Layout, Alignment},
-    widgets::{Borders, Block, Paragraph, Wrap},
-    Frame
-};
-use tui_textarea::{Input, Key, TextArea};
 use crate::windows::PopupStatus;
+use ratatui::{
+    layout::{Alignment, Layout, Rect},
+    prelude::{Constraint, Direction},
+    style::{Color, Style, Stylize},
+    widgets::{Block, Borders, Paragraph, Wrap},
+    Frame,
+};
+use std::io;
+use std::rc::Rc;
+use std::sync::mpsc;
+use tui_textarea::{Input, Key, TextArea};
 
 pub enum AddPopupStatus {
     Show,
@@ -53,21 +53,37 @@ impl<'text_area> AddCredPopup<'text_area> {
             .on_black();
         let email_block = Block::default()
             .title("Email")
-            .style(Style::default().bg(if self.which == 0 {Color::Cyan} else {Color::Black}))
+            .style(Style::default().bg(if self.which == 0 {
+                Color::Cyan
+            } else {
+                Color::Black
+            }))
             .borders(Borders::ALL);
         let password_block = Block::default()
             .title("password")
-            .style(Style::default().bg(if self.which == 1 {Color::Cyan} else {Color::Black}))
+            .style(Style::default().bg(if self.which == 1 {
+                Color::Cyan
+            } else {
+                Color::Black
+            }))
             .borders(Borders::ALL);
-        let ok_block = Block::default()
-            .style(Style::default().bg(if self.which == 2 {Color::Cyan} else {Color::Black}));
-        let cancel_block = Block::default()
-            .style(Style::default().bg(if self.which == 3 {Color::Cyan} else {Color::Black}));
+        let ok_block = Block::default().style(Style::default().bg(if self.which == 2 {
+            Color::Cyan
+        } else {
+            Color::Black
+        }));
+        let cancel_block = Block::default().style(Style::default().bg(if self.which == 3 {
+            Color::Cyan
+        } else {
+            Color::Black
+        }));
         // make paragraph.
-        let hint = Paragraph::new("We recommend to use 'app' password.\nUse Tab to switch between active blocks")
-            .white()
-            .wrap(Wrap { trim: false })
-            .alignment(Alignment::Center);
+        let hint = Paragraph::new(
+            "We recommend to use 'app' password.\nUse Tab to switch between active blocks",
+        )
+        .white()
+        .wrap(Wrap { trim: false })
+        .alignment(Alignment::Center);
         let ok_button = Paragraph::new("Add")
             .block(ok_block)
             .white()
@@ -104,7 +120,11 @@ impl<'text_area> AddCredPopup<'text_area> {
                 Block::default()
                     .title("Email")
                     .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 0 {Color::Cyan} else {Color::Black}))
+                    .style(Style::default().bg(if self.which == 0 {
+                        Color::Cyan
+                    } else {
+                        Color::Black
+                    }))
                     .border_style(Style::default().fg(Color::Green)),
             );
         } else {
@@ -113,7 +133,11 @@ impl<'text_area> AddCredPopup<'text_area> {
                 Block::default()
                     .title("Email")
                     .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 0 {Color::Cyan} else {Color::Black}))
+                    .style(Style::default().bg(if self.which == 0 {
+                        Color::Cyan
+                    } else {
+                        Color::Black
+                    }))
                     .border_style(Style::default().fg(Color::Red)),
             );
         }
@@ -124,7 +148,11 @@ impl<'text_area> AddCredPopup<'text_area> {
                 Block::default()
                     .title("Password")
                     .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 1 {Color::Cyan} else {Color::Black}))
+                    .style(Style::default().bg(if self.which == 1 {
+                        Color::Cyan
+                    } else {
+                        Color::Black
+                    }))
                     .border_style(Style::default().fg(Color::Green)),
             );
         } else {
@@ -133,7 +161,11 @@ impl<'text_area> AddCredPopup<'text_area> {
                 Block::default()
                     .title("Password")
                     .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 1 {Color::Cyan} else {Color::Black}))
+                    .style(Style::default().bg(if self.which == 1 {
+                        Color::Cyan
+                    } else {
+                        Color::Black
+                    }))
                     .border_style(Style::default().fg(Color::Red)),
             );
         }
@@ -145,23 +177,31 @@ impl<'text_area> AddCredPopup<'text_area> {
             // Input { key: Key::Tab, .. } => {
             //    self.which = (self.which + 1) % 4;
             // },
-            Input { key: Key::Enter, .. } => {
+            Input {
+                key: Key::Enter, ..
+            } => {
                 if self.which == 2 {
                     if self.is_valid() {
-                        self.ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Save)).unwrap();
-                        self.ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Exit)).unwrap();
+                        self.ch_popup_sender
+                            .send(PopupStatus::Add(AddPopupStatus::Save))
+                            .unwrap();
+                        self.ch_popup_sender
+                            .send(PopupStatus::Add(AddPopupStatus::Exit))
+                            .unwrap();
                     }
                 } else if self.which == 3 {
-                    self.ch_popup_sender.send(PopupStatus::Add(AddPopupStatus::Exit)).unwrap();
+                    self.ch_popup_sender
+                        .send(PopupStatus::Add(AddPopupStatus::Exit))
+                        .unwrap();
                 }
-            },
+            }
             input => {
                 if self.which == 0 {
                     self.email.input(input);
                 } else if self.which == 1 {
                     self.password.input(input);
                 };
-            },
+            }
         }
         Ok(())
     }
@@ -169,18 +209,18 @@ impl<'text_area> AddCredPopup<'text_area> {
 
 fn get_popup_area(r: Rect) -> Rect {
     let [_, ver_area, _] = Layout::vertical([
-            Constraint::Percentage((100 - 39)/2),
-            Constraint::Percentage(39),
-            Constraint::Percentage((100 - 39)/2),
-        ])
-        .areas(r);
+        Constraint::Percentage((100 - 39) / 2),
+        Constraint::Percentage(39),
+        Constraint::Percentage((100 - 39) / 2),
+    ])
+    .areas(r);
 
     let [_, box_area, _] = Layout::horizontal([
-            Constraint::Percentage((100 - 43)/2),
-            Constraint::Percentage(43),
-            Constraint::Percentage((100 - 43)/2),
-        ])
-        .areas(ver_area);
+        Constraint::Percentage((100 - 43) / 2),
+        Constraint::Percentage(43),
+        Constraint::Percentage((100 - 43) / 2),
+    ])
+    .areas(ver_area);
 
     box_area
 }
@@ -203,10 +243,7 @@ fn get_chunks(r: Rect) -> Rc<[Rect]> {
 fn get_button_chunks(r: Rect) -> Rc<[Rect]> {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-            Constraint::Fill(1),
-        ])
+        .constraints([Constraint::Fill(1), Constraint::Fill(1)])
         .split(r);
     chunks
 }

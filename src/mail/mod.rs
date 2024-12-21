@@ -1,3 +1,3 @@
-pub use mailbox::Mailbox;
+pub use mailbox::{Mailbox, Subject};
 
 pub mod mailbox;

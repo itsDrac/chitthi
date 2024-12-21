@@ -1,11 +1,11 @@
 extern crate dirs;
-use std::fs::{self, File, OpenOptions};
-use std::path::{Path, PathBuf};
-use std::io::{self, Read, Write};
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use std::error::{Error};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::error::Error;
+use std::fs::{self, File, OpenOptions};
+use std::hash::{Hash, Hasher};
+use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Cred {
@@ -17,7 +17,7 @@ pub struct Cred {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AuthList {
     pub auths: Vec<Cred>,
-    pub current: Option<String>
+    pub current: Option<String>,
 }
 
 pub struct Config;
@@ -28,7 +28,7 @@ impl Cred {
         Self {
             id: id.to_string(),
             email: email,
-            password: password
+            password: password,
         }
     }
 
@@ -43,13 +43,15 @@ impl AuthList {
     pub fn new() -> Self {
         let mut contents = String::new();
         let mut config_file = Config::get_file(true, false).expect("can not get file");
-        config_file.read_to_string(&mut contents).expect("Can not read from file");
+        config_file
+            .read_to_string(&mut contents)
+            .expect("Can not read from file");
         if !contents.trim().is_empty() {
             toml::from_str(&contents).expect("Can not read config file")
         } else {
             AuthList {
                 auths: Vec::new(),
-                current: None
+                current: None,
             }
         }
     }
@@ -87,9 +89,10 @@ impl AuthList {
     pub fn write_file(&mut self) {
         let mut config_file = Config::get_file(false, true).expect("can not get file");
         let mut auth_string = toml::to_string_pretty(self).expect("Can not convert to string");
-        config_file.write(auth_string.as_bytes()).expect("Can not write to file");
+        config_file
+            .write(auth_string.as_bytes())
+            .expect("Can not write to file");
     }
-
 }
 
 impl Config {
@@ -101,12 +104,12 @@ impl Config {
     fn create() {
         let config_dir = Self::get_path();
         let chitthi_folder: &Path = config_dir.as_path();
-        fs::create_dir(chitthi_folder)
-            .expect("Can not create folder, Please check permission");
+        fs::create_dir(chitthi_folder).expect("Can not create folder, Please check permission");
     }
 
     fn get_path() -> PathBuf {
-        let mut config_dir: PathBuf = dirs::config_local_dir().expect("Can not access local config directory");
+        let mut config_dir: PathBuf =
+            dirs::config_local_dir().expect("Can not access local config directory");
         config_dir.push(Path::new("chitthi"));
         config_dir
     }
@@ -116,10 +119,11 @@ impl Config {
             Self::create();
         }
         let mut file_path = Self::get_path();
-        file_path.push(Path::new("auth.toml")); 
-        let mut f = File::create(file_path.to_str().unwrap()).expect("Can not create configration file");
+        file_path.push(Path::new("auth.toml"));
+        let mut f =
+            File::create(file_path.to_str().unwrap()).expect("Can not create configration file");
     }
-    
+
     fn get_file(readable: bool, writeable: bool) -> io::Result<File> {
         let mut file_path: PathBuf = Self::get_path();
         file_path.push(Path::new("auth.toml"));
