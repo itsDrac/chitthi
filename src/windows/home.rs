@@ -66,7 +66,6 @@ impl HomePage {
         // Draw the folder list
 
         let mut folder_section = FolderList::new(&mut mailbox);
-
         loop {
             terminal.draw(|frame| {
                 let chunks = Layout::default()

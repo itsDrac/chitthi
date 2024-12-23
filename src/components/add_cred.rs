@@ -174,9 +174,9 @@ impl<'text_area> AddCredPopup<'text_area> {
 
     fn handle_input(&mut self) -> io::Result<()> {
         match crossterm::event::read()?.into() {
-            // Input { key: Key::Tab, .. } => {
-            //    self.which = (self.which + 1) % 4;
-            // },
+            Input { key: Key::Tab, .. } => {
+                self.which = (self.which + 1) % 4;
+            },
             Input {
                 key: Key::Enter, ..
             } => {

@@ -127,7 +127,7 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
             match val {
                 PopupStatus::Add(AddPopupStatus::Show) => {
                     current_popup = Some(Popups::Add(AddCredPopup::new(ch_popup_sender.clone())));
-                    // listion_for_input = false;
+                    listion_for_input = false;
                 }
                 PopupStatus::Add(AddPopupStatus::Exit) => {
                     current_popup = None;

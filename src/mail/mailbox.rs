@@ -14,9 +14,9 @@ pub struct Mailbox {
 }
 
 pub struct Subject {
-    id: u32,
-    subject: String,
-    date: String,
+    pub id: u32,
+    pub subject: String,
+    pub date: String,
 }
 
 impl Subject {
