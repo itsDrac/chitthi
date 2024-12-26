@@ -1,35 +1,36 @@
-use crate::mail::Mailbox;
+use crate::mail::MailboxMessageType;
+use std::sync::mpsc;
 use ratatui::{
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-pub struct FolderList<'mailbox> {
-    mailbox: &'mailbox mut Mailbox,
-
+pub struct FolderList {
+    mailbox_sender: mpsc::Sender<MailboxMessageType>,
     pub current_folder: u8,
-
     pub hover_folder: u8,
-
     pub focused: bool,
-
     folders: Vec<String>,
 }
 
-impl<'mailbox> FolderList<'mailbox> {
-    pub fn new(mailbox: &'mailbox mut Mailbox) -> Self {
+impl FolderList {
+    pub fn new(mailbox_sender: mpsc::Sender<MailboxMessageType>) -> Self {
         Self {
-            mailbox,
-
-            current_folder: 0,
-
-            hover_folder: 0,
-
-            focused: true,
-
+            mailbox_sender,
+            current_folder: u8::MAX,
+            hover_folder: u8::MIN,
+            focused: false,
             folders: Vec::new(),
         }
+    }
+
+    pub fn set_folders(&mut self, folders: Vec<String>) {
+        let folders: Vec<String> = folders
+            .into_iter()
+            .filter(|folder| folder != "[Gmail]")
+            .collect();
+        self.folders = folders;
     }
 
     pub fn update_hover(&mut self) {
@@ -38,21 +39,21 @@ impl<'mailbox> FolderList<'mailbox> {
 
     pub fn update_selection(&mut self) {
         self.current_folder = self.hover_folder;
-        self.hover_folder = 0;
-        self.mailbox
-            .select_folder(&self.folders[self.current_folder as usize])
-            .unwrap();
+        self.hover_folder = u8::MIN;
+        let _ = self.mailbox_sender.send(MailboxMessageType::SelectFolder(self.folders[self.current_folder as usize].clone()));
     }
 
     fn get_spans(&mut self) -> Vec<Span> {
-        let folders = self.mailbox.list_folders().unwrap();
+        // let folders = self.mailbox.list_folders().unwrap();
 
-        let folders: Vec<String> = folders
+        let folders: Vec<String> = self.folders.clone()
             .into_iter()
-            .filter(|folder| folder != "[Gmail]")
+            .map(|folder| {
+                let folder = folder.split("/").last().unwrap_or("");
+                folder.to_string()
+            })
             .collect();
 
-        self.folders = folders.clone();
 
         // Create a vector of span widgets where folder where indexed hover_folder is of green color
 
@@ -81,8 +82,7 @@ impl<'mailbox> FolderList<'mailbox> {
 
         let mut block = Block::default()
             .title("Folders")
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan));
+            .borders(Borders::ALL);
 
         // create a if block is focused, then border should be clay, else white
 

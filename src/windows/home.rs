@@ -2,7 +2,7 @@ use std::io;
 
 use std::sync::mpsc;
 
-use crate::mail::Mailbox;
+use crate::mail::{Mailbox, MailboxMessageType};
 use ratatui::{
     crossterm::event::{self, KeyCode, KeyEventKind},
     layout::Alignment,
@@ -16,56 +16,42 @@ use ratatui::{
 
 use crate::chitthi::{AuthList, Cred};
 
-use crate::components::FolderList;
+use crate::components;
 
 enum Messages {
     UpdateFolderHover,
-
     UpdateFolderSelection,
-
-    ChangeSection(Sections),
+    ChangeSection,
 }
-
-#[derive(PartialEq)]
 
 pub enum Sections {
     FolderList,
-
     MessageList,
-
     MessageView,
 }
 
 pub struct HomePage {
-    current_auth: Option<Cred>,
-
     current_section: Sections,
-
-    ch_sender: mpsc::Sender<Messages>,
-
-    ch_receiver: mpsc::Receiver<Messages>,
 }
 
 impl HomePage {
     pub fn new() -> Self {
-        let (ch_sender, ch_receiver) = mpsc::channel();
-
         Self {
-            current_auth: AuthList::new().get_current(),
             current_section: Sections::FolderList,
-            ch_sender,
-            ch_receiver,
         }
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-        let mut mailbox = Mailbox::new(self.current_auth.as_ref().unwrap().clone());
-
-        mailbox.connect().unwrap();
+        let cred = AuthList::new().get_current().unwrap();
+        let mut mailbox = Mailbox::new();
+        mailbox.connect(cred).unwrap();
+        let mailbox_sender: std::sync::mpsc::Sender<MailboxMessageType> = mailbox.get_sender();
 
         // Draw the folder list
 
-        let mut folder_section = FolderList::new(&mut mailbox);
+        let mut folder_section = components::FolderList::new(mailbox_sender.clone());
+        folder_section.focused = true;
+        let _ = mailbox_sender.send(MailboxMessageType::ListFolders);
         loop {
             terminal.draw(|frame| {
                 let chunks = Layout::default()
@@ -73,6 +59,7 @@ impl HomePage {
                     .constraints([Constraint::Max(3), Constraint::Fill(1), Constraint::Max(3)])
                     .split(frame.area());
 
+                folder_section.set_folders(mailbox.folders.clone());
                 let folder_list = folder_section.render_list();
 
                 frame.render_widget(folder_list, chunks[0]);
@@ -89,6 +76,7 @@ impl HomePage {
                             }
                             Sections::MessageList => Sections::MessageView,
                             Sections::MessageView => {
+                                let _ = mailbox_sender.send(MailboxMessageType::ListFolders).unwrap();
                                 folder_section.focused = true;
                                 Sections::FolderList
                             }
@@ -96,9 +84,7 @@ impl HomePage {
                     } else if key.code == KeyCode::Char('l') {
                         match self.current_section {
                             Sections::FolderList => {
-                                if folder_section.focused {
-                                    let _ = self.ch_sender.send(Messages::UpdateFolderHover);
-                                }
+                                folder_section.update_hover();
                             }
 
                             _ => {}
@@ -106,7 +92,8 @@ impl HomePage {
                     } else if key.code == KeyCode::Enter {
                         match self.current_section {
                             Sections::FolderList => {
-                                let _ = self.ch_sender.send(Messages::UpdateFolderSelection);
+                                folder_section.update_selection();
+                                folder_section.focused = false;
                                 self.current_section = Sections::MessageList;
                             }
 
@@ -118,17 +105,8 @@ impl HomePage {
                 }
             }
             // handle messages
-            if let Ok(val) = self.ch_receiver.try_recv() {
-                match val {
-                    Messages::UpdateFolderHover => {
-                        folder_section.update_hover();
-                    }
-                    Messages::UpdateFolderSelection => {
-                        folder_section.update_selection();
-                    }
-                    _ => {}
-                }
-            }
+        mailbox.listen_message();
         }
     }
+
 }
