@@ -49,9 +49,10 @@ impl HomePage {
 
         // Draw the folder list
 
-        let mut folder_section = components::FolderList::new(mailbox_sender.clone());
+        let mut folder_section = components::FolderList::new(mailbox.get_sender());
         folder_section.focused = true;
         let _ = mailbox_sender.send(MailboxMessageType::ListFolders);
+        let mut subject_section = components::SubjectView::new(mailbox.get_sender());
         loop {
             terminal.draw(|frame| {
                 let chunks = Layout::default()
@@ -61,8 +62,9 @@ impl HomePage {
 
                 folder_section.set_folders(mailbox.folders.clone());
                 let folder_list = folder_section.render_list();
-
                 frame.render_widget(folder_list, chunks[0]);
+                let subject_list = subject_section.render_list();
+                frame.render_widget(subject_list, chunks[1]);
             })?;
 
             // handle key events such that when the user presses the 'Tab' key, the current section is changed
@@ -76,7 +78,9 @@ impl HomePage {
                             }
                             Sections::MessageList => Sections::MessageView,
                             Sections::MessageView => {
-                                let _ = mailbox_sender.send(MailboxMessageType::ListFolders).unwrap();
+                                let _ = mailbox_sender
+                                    .send(MailboxMessageType::ListFolders)
+                                    .unwrap();
                                 folder_section.focused = true;
                                 Sections::FolderList
                             }
@@ -92,9 +96,13 @@ impl HomePage {
                     } else if key.code == KeyCode::Enter {
                         match self.current_section {
                             Sections::FolderList => {
+                                self.current_section = Sections::MessageList;
                                 folder_section.update_selection();
                                 folder_section.focused = false;
-                                self.current_section = Sections::MessageList;
+                                let _ = mailbox_sender.send(MailboxMessageType::GetMoreSubjects(
+                                    subject_section.mail_count,
+                                ));
+                                subject_section.update_subjects(mailbox.subjects.clone());
                             }
 
                             _ => {}
@@ -105,8 +113,7 @@ impl HomePage {
                 }
             }
             // handle messages
-        mailbox.listen_message();
+            mailbox.listen_message();
         }
     }
-
 }
