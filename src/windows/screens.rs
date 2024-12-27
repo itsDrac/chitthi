@@ -1,5 +1,5 @@
 use crate::chitthi::{AuthList, Config, Cred};
-use crate::windows::{home, welcome};
+use crate::windows::{home}; //, welcome};
 use ratatui::DefaultTerminal;
 use std::io;
 
@@ -11,7 +11,7 @@ pub enum Screens<'term> {
 impl<'term> Screens<'term> {
     fn run(&mut self) {
         match self {
-            Screens::Welcome(t) => welcome::run(t).expect("Can not run the welcome window."),
+            Screens::Welcome(t) => {}, // welcome::run(t).expect("Can not run the welcome window.")},
             Screens::Home(t) => {
                 let mut home_page: home::HomePage = home::HomePage::new();
                 home_page.run(t).expect("Can not run the home window.")
@@ -35,8 +35,8 @@ fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
             screen.run();
         }
         None => {
-            let mut screen = Screens::Welcome(terminal);
-            screen.run();
+            // let mut screen = Screens::Welcome(terminal);
+            // screen.run();
         }
     }
     Ok(())
