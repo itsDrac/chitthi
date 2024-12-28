@@ -107,7 +107,7 @@ impl HomePage {
 
                             _ => {}
                         }
-                    } else if key.code == KeyCode::Char('q') {
+                    } else if key.code == KeyCode::Esc {
                         return Ok(());
                     }
                 }
