@@ -1,13 +1,13 @@
 extern crate imap;
 use crate::chitthi::Cred;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local};
 use mail_parser::MessageParser;
 use std::sync::mpsc;
 
 pub enum MailboxMessageType {
     ListFolders,
     SelectFolder(String),
-    GetMoreSubjects(u32),
+    GetMoreSubjects(usize),
     Quit,
 }
 
@@ -18,6 +18,8 @@ pub struct Mailbox {
     pub subjects: Vec<Subject>,
     sender: mpsc::Sender<MailboxMessageType>,
     receiver: mpsc::Receiver<MailboxMessageType>,
+    max_mail_count: usize,
+    pub new_subjects_available: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -29,7 +31,9 @@ pub struct Subject {
 
 impl Subject {
     fn convert_date_to_readable(date: i64) -> String {
-        let date = DateTime::<Utc>::from_timestamp(date, 0).unwrap();
+        let date = DateTime::from_timestamp(date, 0)
+            .unwrap()
+            .with_timezone(&Local);
         let date = date.format("%d/%b/%Y %r").to_string();
         date
     }
@@ -45,6 +49,8 @@ impl Mailbox {
             folders: Vec::new(),
             subjects: Vec::new(),
             mailbox: None,
+            max_mail_count: usize::MAX,
+            new_subjects_available: false,
         }
     }
 
@@ -69,21 +75,24 @@ impl Mailbox {
 
     pub fn select_folder(&mut self, folder: &str) -> Result<(), imap::Error> {
         let mut session = self.session.as_mut().unwrap();
-        self.mailbox = Some(session.select(folder)?);
+        let mailbox = session.select(folder)?;
+        self.max_mail_count = mailbox.exists as usize;
+        self.mailbox = Some(mailbox);
         Ok(())
     }
 
-    pub fn get_more_subjects(&mut self, mail_count: u32) -> Vec<Subject> {
+    pub fn get_more_subjects(&mut self, mail_count: usize) -> Vec<Subject> {
         let mut session = self.session.as_mut().unwrap();
         let mut subjects: Vec<Subject> = Vec::new();
         let mailbox = self.mailbox.as_mut().unwrap();
-        let mail_ids = mailbox.exists - (mail_count - 1)..=mailbox.exists;
-        let mail_ids: Vec<String> = mail_ids.map(|id| id.to_string()).collect();
+        let mail_range = self.max_mail_count - (mail_count - 1)..=self.max_mail_count;
+        let mail_ids: Vec<String> = mail_range.map(|id| id.to_string()).collect();
         let mail_ids = mail_ids.join(",");
+        self.max_mail_count -= mail_count;
         let mails = session
             .fetch(mail_ids, "BODY[HEADER.FIELDS (SUBJECT DATE)]")
             .unwrap();
-        for mail in mails.iter() {
+        for mail in mails.iter().rev() {
             subjects.push(Self::get_subject_from_mail(mail));
         }
         subjects
@@ -117,6 +126,7 @@ impl Mailbox {
             }
             MailboxMessageType::GetMoreSubjects(mail_count) => {
                 self.subjects = self.get_more_subjects(mail_count);
+                self.new_subjects_available = true;
             }
             MailboxMessageType::Quit => {
                 self.session = None;

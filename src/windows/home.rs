@@ -18,15 +18,9 @@ use crate::chitthi::{AuthList, Cred};
 
 use crate::components;
 
-enum Messages {
-    UpdateFolderHover,
-    UpdateFolderSelection,
-    ChangeSection,
-}
-
 pub enum Sections {
     FolderList,
-    MessageList,
+    SubjectList,
     MessageView,
 }
 
@@ -54,6 +48,8 @@ impl HomePage {
         let _ = mailbox_sender.send(MailboxMessageType::ListFolders);
         let mut subject_section = components::SubjectView::new(mailbox.get_sender());
         loop {
+            // handle messages
+            mailbox.listen_message();
             terminal.draw(|frame| {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
@@ -63,8 +59,24 @@ impl HomePage {
                 folder_section.set_folders(mailbox.folders.clone());
                 let folder_list = folder_section.render_list();
                 frame.render_widget(folder_list, chunks[0]);
+                // Divide chunks[1] into 2 horizontal chunks
+                let mail_chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(30), Constraint::Fill(1)])
+                    .split(chunks[1]);
+                let mut subject_current_hover =
+                    std::mem::replace(&mut subject_section.current_hover, Default::default());
+                if mailbox.new_subjects_available {
+                    subject_section.update_subjects(mailbox.subjects.clone());
+                    mailbox.new_subjects_available = false;
+                }
                 let subject_list = subject_section.render_list();
-                frame.render_widget(subject_list, chunks[1]);
+                frame.render_stateful_widget(
+                    subject_list,
+                    mail_chunks[0],
+                    &mut subject_current_hover,
+                );
+                subject_section.current_hover = subject_current_hover;
             })?;
 
             // handle key events such that when the user presses the 'Tab' key, the current section is changed
@@ -74,9 +86,12 @@ impl HomePage {
                         self.current_section = match self.current_section {
                             Sections::FolderList => {
                                 folder_section.focused = false;
-                                Sections::MessageList
+                                Sections::SubjectList
                             }
-                            Sections::MessageList => Sections::MessageView,
+                            Sections::SubjectList => {
+                                subject_section.focused = false;
+                                Sections::MessageView
+                            }
                             Sections::MessageView => {
                                 let _ = mailbox_sender
                                     .send(MailboxMessageType::ListFolders)
@@ -88,7 +103,43 @@ impl HomePage {
                     } else if key.code == KeyCode::Char('l') {
                         match self.current_section {
                             Sections::FolderList => {
-                                folder_section.update_hover();
+                                folder_section.update_hover(true);
+                            }
+
+                            _ => {}
+                        }
+                    } else if key.code == KeyCode::Char('h') {
+                        match self.current_section {
+                            Sections::FolderList => {
+                                folder_section.update_hover(false);
+                            }
+
+                            _ => {}
+                        }
+                    } else if key.code == KeyCode::Char('j') {
+                        match self.current_section {
+                            Sections::SubjectList => {
+                                subject_section.hover_next();
+                                if let Some(selected_index) =
+                                    subject_section.current_hover.selected()
+                                {
+                                    if selected_index == (subject_section.mail_count - 2) {
+                                        subject_section.mail_count += 5;
+                                        let _ = mailbox_sender.send(
+                                            MailboxMessageType::GetMoreSubjects(
+                                                subject_section.mail_count,
+                                            ),
+                                        );
+                                    }
+                                }
+                            }
+
+                            _ => {}
+                        }
+                    } else if key.code == KeyCode::Char('k') {
+                        match self.current_section {
+                            Sections::SubjectList => {
+                                subject_section.hover_previous();
                             }
 
                             _ => {}
@@ -96,13 +147,14 @@ impl HomePage {
                     } else if key.code == KeyCode::Enter {
                         match self.current_section {
                             Sections::FolderList => {
-                                self.current_section = Sections::MessageList;
+                                self.current_section = Sections::SubjectList;
                                 folder_section.update_selection();
                                 folder_section.focused = false;
                                 let _ = mailbox_sender.send(MailboxMessageType::GetMoreSubjects(
                                     subject_section.mail_count,
                                 ));
-                                subject_section.update_subjects(mailbox.subjects.clone());
+                                subject_section.clear_subjects();
+                                subject_section.focused = true;
                             }
 
                             _ => {}
@@ -112,8 +164,6 @@ impl HomePage {
                     }
                 }
             }
-            // handle messages
-            mailbox.listen_message();
         }
     }
 }

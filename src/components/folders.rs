@@ -1,10 +1,10 @@
 use crate::mail::MailboxMessageType;
-use std::sync::mpsc;
 use ratatui::{
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
+use std::sync::mpsc;
 
 pub struct FolderList {
     mailbox_sender: mpsc::Sender<MailboxMessageType>,
@@ -33,27 +33,34 @@ impl FolderList {
         self.folders = folders;
     }
 
-    pub fn update_hover(&mut self) {
-        self.hover_folder = (self.hover_folder + 1) % self.folders.len() as u8;
+    pub fn update_hover(&mut self, to_right: bool) {
+        if to_right {
+            self.hover_folder = (self.hover_folder + 1) % self.folders.len() as u8;
+        } else {
+            self.hover_folder = (self.hover_folder - 1) % self.folders.len() as u8;
+        }
     }
 
     pub fn update_selection(&mut self) {
         self.current_folder = self.hover_folder;
         self.hover_folder = u8::MIN;
-        let _ = self.mailbox_sender.send(MailboxMessageType::SelectFolder(self.folders[self.current_folder as usize].clone()));
+        let _ = self.mailbox_sender.send(MailboxMessageType::SelectFolder(
+            self.folders[self.current_folder as usize].clone(),
+        ));
     }
 
     fn get_spans(&mut self) -> Vec<Span> {
         // let folders = self.mailbox.list_folders().unwrap();
 
-        let folders: Vec<String> = self.folders.clone()
+        let folders: Vec<String> = self
+            .folders
+            .clone()
             .into_iter()
             .map(|folder| {
                 let folder = folder.split("/").last().unwrap_or("");
                 folder.to_string()
             })
             .collect();
-
 
         // Create a vector of span widgets where folder where indexed hover_folder is of green color
 
@@ -80,9 +87,7 @@ impl FolderList {
     pub fn render_list(&mut self) -> Paragraph {
         // Create a Block widget with the line and the title "Folders", also Block border should be Clay when focused is True.
 
-        let mut block = Block::default()
-            .title("Folders")
-            .borders(Borders::ALL);
+        let mut block = Block::default().title("Folders").borders(Borders::ALL);
 
         // create a if block is focused, then border should be clay, else white
 

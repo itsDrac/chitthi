@@ -17,8 +17,16 @@ pub enum AddPopupStatus {
     Exit,
 }
 
+#[derive(PartialEq, Debug)]
+pub enum WhichSection {
+    EmailBox,
+    PasswordBox,
+    OkBox,
+    CancelBox,
+}
+
 pub struct AddCredPopup<'text_area> {
-    pub which: usize,
+    pub which: WhichSection,
     pub email: TextArea<'text_area>,
     pub password: TextArea<'text_area>,
     ch_popup_sender: mpsc::Sender<PopupStatus>,
@@ -27,7 +35,7 @@ pub struct AddCredPopup<'text_area> {
 impl<'text_area> AddCredPopup<'text_area> {
     pub fn new(ch: mpsc::Sender<PopupStatus>) -> Self {
         Self {
-            which: 0,
+            which: WhichSection::EmailBox,
             email: TextArea::default(),
             password: TextArea::default(),
             ch_popup_sender: ch,
@@ -53,37 +61,61 @@ impl<'text_area> AddCredPopup<'text_area> {
             .on_black();
         let email_block = Block::default()
             .title("Email")
-            .style(Style::default().bg(if self.which == 0 {
-                Color::Cyan
-            } else {
-                Color::Black
-            }))
+            .style(
+                Style::default().bg(if self.which == WhichSection::EmailBox {
+                    Color::Cyan
+                } else {
+                    Color::Black
+                }),
+            )
             .borders(Borders::ALL);
         let password_block = Block::default()
             .title("password")
-            .style(Style::default().bg(if self.which == 1 {
+            .style(
+                Style::default().bg(if self.which == WhichSection::PasswordBox {
+                    Color::Cyan
+                } else {
+                    Color::Black
+                }),
+            )
+            .borders(Borders::ALL);
+        let ok_block =
+            Block::default().style(Style::default().bg(if self.which == WhichSection::OkBox {
                 Color::Cyan
             } else {
                 Color::Black
-            }))
-            .borders(Borders::ALL);
-        let ok_block = Block::default().style(Style::default().bg(if self.which == 2 {
-            Color::Cyan
-        } else {
-            Color::Black
-        }));
-        let cancel_block = Block::default().style(Style::default().bg(if self.which == 3 {
-            Color::Cyan
-        } else {
-            Color::Black
-        }));
+            }));
+        let cancel_block = Block::default().style(Style::default().bg(
+            if self.which == WhichSection::CancelBox {
+                Color::Cyan
+            } else {
+                Color::Black
+            },
+        ));
         // make paragraph.
-        let hint = Paragraph::new(
-            "We recommend to use 'app' password.\nUse Tab to switch between active blocks",
-        )
-        .white()
-        .wrap(Wrap { trim: false })
-        .alignment(Alignment::Center);
+        let hint = if self.email.lines()[0].is_empty() {
+            Paragraph::new(
+                "We recommendto use app password. \nUse Tab to switch bwtween active blocks",
+            )
+            .white()
+            .wrap(Wrap { trim: false })
+            .alignment(Alignment::Center)
+        } else {
+            match self.is_valid() {
+                Ok(_) => Paragraph::new(
+                    "We recommendto use app password. \nUse Tab to switch bwtween active blocks",
+                )
+                .white()
+                .wrap(Wrap { trim: false })
+                .alignment(Alignment::Center),
+                Err(msg) => Paragraph::new(msg)
+                    .red()
+                    .wrap(Wrap { trim: false })
+                    .alignment(Alignment::Center),
+            }
+        };
+        self.email.set_block(email_block);
+        self.password.set_block(password_block);
         let ok_button = Paragraph::new("Add")
             .block(ok_block)
             .white()
@@ -95,12 +127,7 @@ impl<'text_area> AddCredPopup<'text_area> {
         // create textarea.
         self.email.set_placeholder_text("example@gmail.com");
         self.email.set_cursor_line_style(Style::default());
-        if self.which > 1 {
-            self.email.set_block(email_block);
-            self.password.set_block(password_block);
-        } else {
-            let _ = self.is_valid();
-        }
+        // adding error message.
         self.password.set_cursor_line_style(Style::default());
         self.password.set_mask_char('\u{2022}');
         // render widgets.
@@ -112,76 +139,36 @@ impl<'text_area> AddCredPopup<'text_area> {
         frame.render_widget(cancel_button, button_chunks[1]);
     }
 
-    fn is_valid(&mut self) -> bool {
-        let mut is_email_val = false;
-        if (self.email.lines()[0]).contains("@gmail.com") {
-            is_email_val = true;
-            self.email.set_block(
-                Block::default()
-                    .title("Email")
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 0 {
-                        Color::Cyan
-                    } else {
-                        Color::Black
-                    }))
-                    .border_style(Style::default().fg(Color::Green)),
-            );
-        } else {
-            is_email_val = false;
-            self.email.set_block(
-                Block::default()
-                    .title("Email")
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 0 {
-                        Color::Cyan
-                    } else {
-                        Color::Black
-                    }))
-                    .border_style(Style::default().fg(Color::Red)),
-            );
+    fn is_valid(&mut self) -> Result<(), String> {
+        let is_email_val = self.email.lines()[0].contains("@gmail.com");
+        let is_password_val = !self.password.lines()[0].is_empty();
+        let mut error_msg = String::new();
+        if !is_email_val {
+            error_msg = "Please enter a valid gmail email".to_string();
+        } else if !is_password_val {
+            error_msg = "Please enter Password.".to_string();
         }
-        let mut is_password_val = false;
-        if !(self.password.lines()[0]).is_empty() {
-            is_password_val = true;
-            self.password.set_block(
-                Block::default()
-                    .title("Password")
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 1 {
-                        Color::Cyan
-                    } else {
-                        Color::Black
-                    }))
-                    .border_style(Style::default().fg(Color::Green)),
-            );
-        } else {
-            is_password_val = false;
-            self.password.set_block(
-                Block::default()
-                    .title("Password")
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(if self.which == 1 {
-                        Color::Cyan
-                    } else {
-                        Color::Black
-                    }))
-                    .border_style(Style::default().fg(Color::Red)),
-            );
+        if error_msg.is_empty() {
+            return Ok(());
         }
-        is_email_val & is_password_val
+        Err(error_msg)
     }
 
     fn handle_input(&mut self) -> io::Result<()> {
         match crossterm::event::read()?.into() {
             Input { key: Key::Tab, .. } => {
-                self.which = (self.which + 1) % 4;
-            },
+                self.which = match self.which {
+                    WhichSection::EmailBox => WhichSection::PasswordBox,
+                    WhichSection::PasswordBox => WhichSection::OkBox,
+                    WhichSection::OkBox => WhichSection::CancelBox,
+                    WhichSection::CancelBox => WhichSection::EmailBox,
+                }
+            }
             Input {
                 key: Key::Enter, ..
             } => {
-                if self.which == 2 {
-                    if self.is_valid() {
+                if self.which == WhichSection::OkBox {
+                    if let Ok(_) = self.is_valid() {
                         self.ch_popup_sender
                             .send(PopupStatus::Add(AddPopupStatus::Save))
                             .unwrap();
@@ -189,16 +176,16 @@ impl<'text_area> AddCredPopup<'text_area> {
                             .send(PopupStatus::Add(AddPopupStatus::Exit))
                             .unwrap();
                     }
-                } else if self.which == 3 {
+                } else if self.which == WhichSection::CancelBox {
                     self.ch_popup_sender
                         .send(PopupStatus::Add(AddPopupStatus::Exit))
                         .unwrap();
                 }
             }
             input => {
-                if self.which == 0 {
+                if self.which == WhichSection::EmailBox {
                     self.email.input(input);
-                } else if self.which == 1 {
+                } else if self.which == WhichSection::PasswordBox {
                     self.password.input(input);
                 };
             }

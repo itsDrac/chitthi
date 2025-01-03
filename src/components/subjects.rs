@@ -3,16 +3,16 @@ use crate::mail::Subject;
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{List, ListItem},
+    widgets::{Block, List, ListItem, ListState},
 };
 use std::sync::mpsc;
 
 pub struct SubjectView {
     mailbox_sender: mpsc::Sender<MailboxMessageType>,
-    pub mail_count: u32,
-    subjects: Vec<Subject>,
-    selected_mail: usize,
-    focused: bool,
+    pub mail_count: usize,
+    pub subjects: Vec<Subject>,
+    pub current_hover: ListState,
+    pub focused: bool,
 }
 
 impl SubjectView {
@@ -21,13 +21,30 @@ impl SubjectView {
             mailbox_sender,
             mail_count: 5,
             subjects: Vec::new(),
-            selected_mail: 0,
+            current_hover: ListState::default(),
             focused: false,
         }
     }
 
+    pub fn clear_subjects(&mut self) {
+        self.subjects.clear();
+    }
+
     pub fn update_subjects(&mut self, mut subjects: Vec<Subject>) {
         self.subjects.append(&mut subjects);
+    }
+
+    pub fn hover_next(&mut self) {
+        match self.current_hover.selected() {
+            Some(_) => self.current_hover.select_next(),
+            None => self.current_hover.select_first(),
+        }
+    }
+
+    pub fn hover_previous(&mut self) {
+        if let Some(_) = self.current_hover.selected() {
+            self.current_hover.select_previous();
+        }
     }
 
     fn get_subject_line(&self, subject: Subject) -> Text {
@@ -54,14 +71,19 @@ impl SubjectView {
         let mut paragraph_items: Vec<ListItem> = Vec::new();
         for (i, subject) in self.subjects.iter().enumerate() {
             let subject_line = self.get_subject_line(subject.clone());
-            let mut item = ListItem::new(subject_line);
-            if self.selected_mail == i {
-                item = item.style(Style::default().bg(Color::Cyan));
-            }
+            let item = ListItem::new(subject_line);
             paragraph_items.push(item);
         }
         // Make List widget which takes in vector of listItems
-        let list = List::new(paragraph_items);
+        let list = List::new(paragraph_items)
+            .block(Block::bordered().title("Subjects"))
+            .highlight_style(Style::default().bg(Color::Cyan))
+            .style(Style::default().fg(if self.focused {
+                Color::Cyan
+            } else {
+                Color::White
+            }))
+            .scroll_padding(1);
         list
     }
 }

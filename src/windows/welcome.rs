@@ -1,6 +1,6 @@
 extern crate dirs;
 use crate::chitthi::{AuthList, Config, Cred};
-use crate::components::{AddCredPopup, AddPopupStatus, Quit, QuitStatus};
+use crate::components::{AddCredPopup, AddPopupStatus, Quit, QuitStatus, WhichSection};
 use ratatui::{
     crossterm::event::{self, KeyCode, KeyEventKind},
     layout::Alignment,
@@ -94,7 +94,12 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                                     quit.which = (quit.which + 1) % 2;
                                 }
                                 Popups::Add(add) => {
-                                    add.which = (add.which + 1) % 4;
+                                    add.which = match add.which {
+                                        WhichSection::EmailBox => WhichSection::PasswordBox,
+                                        WhichSection::PasswordBox => WhichSection::OkBox,
+                                        WhichSection::OkBox => WhichSection::CancelBox,
+                                        WhichSection::CancelBox => WhichSection::EmailBox,
+                                    }
                                 }
                                 _ => println!("WIP"),
                             }
@@ -111,7 +116,7 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                                     }
                                 }
                                 Popups::Add(add) => {
-                                    if add.which == 3 {
+                                    if add.which == WhichSection::CancelBox {
                                         current_popup = None;
                                         listion_for_input = true;
                                     }

@@ -1,4 +1,4 @@
-pub use add_cred::{AddCredPopup, AddPopupStatus};
+pub use add_cred::{AddCredPopup, AddPopupStatus, WhichSection};
 pub use folders::FolderList;
 pub use quit::{Quit, QuitStatus};
 pub use subjects::SubjectView;
