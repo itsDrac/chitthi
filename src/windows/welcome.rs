@@ -1,5 +1,6 @@
 extern crate dirs;
 use crate::chitthi::{AuthList, Config, Cred};
+use crate::components::popups::Add;
 use crate::components::{AddCredPopup, AddPopupStatus, Quit, QuitStatus, WhichSection};
 use ratatui::{
     crossterm::event::{self, KeyCode, KeyEventKind},
@@ -34,7 +35,7 @@ pub enum Selection<'text_area> {
 
 pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
     let mut current_popup: Option<Popups> = None;
-    let mut listion_for_input = true;
+    let mut listen_for_input = true;
     let (ch_popup_sender, ch_popup_receiver) = mpsc::channel();
     loop {
         terminal.draw(|frame| {
@@ -76,7 +77,7 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
             }
         })?;
 
-        if listion_for_input {
+        if listen_for_input {
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     if key.code == KeyCode::Esc {
@@ -88,41 +89,37 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                             .send(PopupStatus::Add(AddPopupStatus::Show))
                             .unwrap();
                     } else if key.code == KeyCode::Tab {
-                        if let Some(popup) = &mut current_popup {
-                            match popup {
-                                Popups::Quit(quit) => {
-                                    quit.which = (quit.which + 1) % 2;
-                                }
-                                Popups::Add(add) => {
-                                    add.which = match add.which {
-                                        WhichSection::EmailBox => WhichSection::PasswordBox,
-                                        WhichSection::PasswordBox => WhichSection::OkBox,
-                                        WhichSection::OkBox => WhichSection::CancelBox,
-                                        WhichSection::CancelBox => WhichSection::EmailBox,
-                                    }
-                                }
-                                _ => println!("WIP"),
+                        match &mut current_popup {
+                            Some(Popups::Quit(quit)) => {
+                                quit.which = (quit.which + 1) % 2;
                             }
+                            Some(Popups::Add(add)) => {
+                                add.which = match add.which {
+                                    WhichSection::EmailBox => WhichSection::PasswordBox,
+                                    WhichSection::PasswordBox => WhichSection::OkBox,
+                                    WhichSection::OkBox => WhichSection::CancelBox,
+                                    WhichSection::CancelBox => WhichSection::EmailBox,
+                                }
+                            }
+                            _ => {}
                         }
                     } else if key.code == KeyCode::Enter {
-                        if let Some(popup) = &mut current_popup {
-                            match popup {
-                                Popups::Quit(quit) => {
-                                    if quit.which == 1 {
-                                        current_popup = None;
-                                        listion_for_input = true;
-                                    } else {
-                                        return Ok(());
-                                    }
+                        match &mut current_popup {
+                            Some(Popups::Quit(quit)) => {
+                                if quit.which == 1 {
+                                    current_popup = None;
+                                    listen_for_input = true;
+                                } else {
+                                    return Ok(());
                                 }
-                                Popups::Add(add) => {
-                                    if add.which == WhichSection::CancelBox {
-                                        current_popup = None;
-                                        listion_for_input = true;
-                                    }
-                                }
-                                _ => println!("WIP"),
                             }
+                            Some(Popups::Add(add)) => {
+                                if add.which == WhichSection::CancelBox {
+                                    current_popup = None;
+                                    listen_for_input = true;
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -132,11 +129,11 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
             match val {
                 PopupStatus::Add(AddPopupStatus::Show) => {
                     current_popup = Some(Popups::Add(AddCredPopup::new(ch_popup_sender.clone())));
-                    listion_for_input = false;
+                    listen_for_input = false;
                 }
                 PopupStatus::Add(AddPopupStatus::Exit) => {
                     current_popup = None;
-                    listion_for_input = true;
+                    listen_for_input = true;
                 }
                 PopupStatus::Add(AddPopupStatus::Save) => {
                     if let Some(popup) = &mut current_popup {
@@ -161,7 +158,7 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                 }
                 PopupStatus::Quit(QuitStatus::No) => {
                     current_popup = None;
-                    listion_for_input = true;
+                    listen_for_input = true;
                 }
             }
         }

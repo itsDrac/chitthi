@@ -134,3 +134,11 @@ impl Mailbox {
         }
     }
 }
+
+impl Drop for Mailbox {
+    fn drop(&mut self) {
+        if let Some(session) = &mut self.session {
+            session.logout().expect("Can not logout");
+        }
+    }
+}

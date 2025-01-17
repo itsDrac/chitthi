@@ -27,8 +27,8 @@ impl Cred {
         let id = Self::get_hash(&email);
         Self {
             id: id.to_string(),
-            email: email,
-            password: password,
+            email,
+            password,
         }
     }
 
