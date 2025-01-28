@@ -63,8 +63,20 @@ impl<'text_area> AddCredPopup<'text_area> {
             .title("Email")
             .style(
                 Style::default().bg(if self.which == WhichSection::EmailBox {
+                    if let Some(popup) = &mut current_popup {
+                        match popup {
+                            CurrentPopup::AddPopup(add_popup) => add_popup.show(frame),
+                            _ => {}
+                        }
+                    }
                     Color::Cyan
                 } else {
+                    if let Some(popup) = &mut current_popup {
+                        match popup {
+                            CurrentPopup::AddPopup(add_popup) => add_popup.show(frame),
+                            _ => {}
+                        }
+                    }
                     Color::Black
                 }),
             )

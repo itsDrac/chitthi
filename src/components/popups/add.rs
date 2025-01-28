@@ -118,6 +118,15 @@ impl<'ta> Add<'ta> {
         popup_area.push(chunks[1]);
         popup_area
     }
+
+    fn check_valid(&mut self) {
+        let email = self.email.lines()[0].clone();
+        let password = self.password.lines()[0].clone();
+        if email.ends_with("@gmail.com") && !password.is_empty() {
+            self.is_valid = Some(true);
+        }
+        self.is_valid = Some(false);
+    }
 }
 
 impl<'ta> Popup for Add<'ta> {
@@ -127,17 +136,24 @@ impl<'ta> Popup for Add<'ta> {
         // main loop just before calling `show` function and passing the area.
         // Get area chunks where all the fileds will be rendered.
         // Get all the fields.
-        let mut fields = self.get_fields();
         // Render all the fields in there respective chunk.
         let block = Block::new()
             .borders(Borders::ALL)
-            .style(Style::default().bg(Color::Black));
-        let centered_area = center_area(
-            block.inner(frame.area()),
-            Constraint::Length(65),
-            Constraint::Length(20),
-        );
+            .title("Add Email and Password")
+            .style(
+                Style::default()
+                    .bg(Color::Black)
+                    .fg(if self.is_valid == Some(false) {
+                        Color::Red
+                    } else {
+                        Color::White
+                    }),
+            );
+        let mut fields = self.get_fields();
+        let centered_area =
+            center_area(frame.area(), Constraint::Length(65), Constraint::Length(20));
         let popup_areas = Add::get_area_chunks(centered_area);
+        frame.render_widget(block, centered_area);
         frame.render_widget(fields.pop().unwrap(), popup_areas[2]);
         frame.render_widget(fields.pop().unwrap(), popup_areas[3]);
         frame.render_widget(fields.pop().unwrap(), popup_areas[4]);
@@ -163,7 +179,11 @@ impl<'ta> Popup for Add<'ta> {
                 } else if key.code == KeyCode::Enter {
                     match self.current_section {
                         Section::AddButton => {
-                            self.screen_sender.send(PopupMessages::AddCred);
+                            self.check_valid();
+                            if self.is_valid == Some(true) {
+                                self.screen_sender.send(PopupMessages::AddCred);
+                                self.screen_sender.send(PopupMessages::HideAddPopup);
+                            }
                         }
                         Section::CancelButton => {
                             self.screen_sender.send(PopupMessages::HideAddPopup);
@@ -192,5 +212,5 @@ fn selected_style() -> Style {
 }
 
 fn unselected_style() -> Style {
-    Style::default().fg(Color::White)
+    Style::default().fg(Color::White).bg(Color::Black)
 }

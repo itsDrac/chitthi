@@ -1,7 +1,9 @@
 pub use add::Add;
+pub use quit::Quit;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::Frame;
 mod add;
+mod quit;
 
 pub trait Popup {
     fn show(&mut self, frame: &mut Frame);

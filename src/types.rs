@@ -9,5 +9,6 @@ pub enum PopupMessages {
     ShowQuitPopup,
     HideAddPopup,
     HideQuitPopup,
+    QuitApp,
     AddCred,
 }

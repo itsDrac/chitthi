@@ -1,49 +1,58 @@
-use crate::components::popups::{center_area, Add, Popup};
+use crate::components::popups::{center_area, Add, Popup, Quit};
 use crate::types::PopupMessages;
 use crossterm::event::{self, KeyCode, KeyEventKind};
-use ratatui::layout::Constraint;
-use ratatui::widgets::Paragraph;
-use ratatui::DefaultTerminal;
+use ratatui::layout::{Alignment, Constraint, Direction, Layout};
+use ratatui::style::Stylize;
+use ratatui::text::Line;
+use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::{symbols, DefaultTerminal};
 use std::io;
 use std::sync::mpsc::channel;
 
-enum CurrentPopup<'ta> {
+pub enum CurrentPopup<'ta> {
     AddPopup(Add<'ta>),
+    QuitPopup(Quit),
 }
 
 pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
-    let (sender, reciver) = channel();
+    let instruction = Line::from(vec![
+        " Add new account: ".into(),
+        "<A>".green().bold(),
+        " View added accounts: ".into(),
+        "<V>".green().bold(),
+        " Quit: ".into(),
+        "<Esc> ".red().bold(),
+    ]);
+    let bottom_block = Block::bordered()
+        .title_bottom(instruction.white().centered())
+        .border_set(symbols::border::DOUBLE);
+    let greeting = Paragraph::new("Hello! welcome to chitthi, your in-terminal mail manager")
+        .block(bottom_block)
+        .cyan()
+        .on_black()
+        .alignment(Alignment::Center);
     let mut current_popup: Option<CurrentPopup> = None;
+    let (sender, reciver) = channel();
     loop {
         terminal.draw(|frame| {
+            let chunk = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Fill(1)])
+                .margin(5)
+                .split(frame.area());
+            frame.render_widget(&greeting, chunk[0]);
             if let Some(popup) = &mut current_popup {
                 match popup {
-                    CurrentPopup::AddPopup(add_popup) => {
-                        // let mut fields = add_popup.get_fields();
-                        // let center = center_area(
-                        // frame.area(),
-                        // Constraint::Length(65),
-                        // Constraint::Length(20),
-                        // );
-                        // let popup_areas = Add::get_area_chunks(center);
-                        // frame.render_widget(fields[0].clone(), popup_areas[2]);
-                        // frame.render_widget(fields[1].clone(), popup_areas[3]);
-                        // frame.render_widget(fields[2].clone(), popup_areas[4]);
-                        // frame.render_widget(&add_popup.email, popup_areas[0]);
-                        // frame.render_widget(&add_popup.password, popup_areas[1]);
-                        add_popup.show(frame);
-                    }
+                    CurrentPopup::AddPopup(add_popup) => add_popup.show(frame),
+                    CurrentPopup::QuitPopup(quit_popup) => quit_popup.show(frame),
+                    _ => {}
                 }
             }
-            let p = Paragraph::new("Welcome to chitthi").centered();
-            frame.render_widget(p, frame.area());
         })?;
         if let Some(popup) = &mut current_popup {
             match popup {
-                CurrentPopup::AddPopup(add_popup) => {
-                    add_popup.handle_input();
-                }
-                _ => {}
+                CurrentPopup::AddPopup(add_popup) => add_popup.handle_input(),
+                CurrentPopup::QuitPopup(quit_popup) => quit_popup.handle_input(),
             }
         } else {
             if let event::Event::Key(key) = event::read()? {
@@ -53,7 +62,10 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                             let popup = Add::new(sender.clone());
                             current_popup = Some(CurrentPopup::AddPopup(popup))
                         }
-                        KeyCode::Esc => return Ok(()),
+                        KeyCode::Esc => {
+                            let popup = Quit::new(sender.clone());
+                            current_popup = Some(CurrentPopup::QuitPopup(popup))
+                        }
                         _ => {}
                     }
                 }
@@ -64,6 +76,12 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                 PopupMessages::ShowAddPopup => {}
                 PopupMessages::HideAddPopup => {
                     current_popup = None;
+                }
+                PopupMessages::HideQuitPopup => {
+                    current_popup = None;
+                }
+                PopupMessages::QuitApp => {
+                    return Ok(());
                 }
                 _ => {}
             }
