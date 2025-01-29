@@ -1,3 +1,4 @@
+use crate::chitthi::{AuthList, Config, Cred};
 use crate::components::popups::{center_area, Add, Popup, Quit};
 use crate::types::PopupMessages;
 use crossterm::event::{self, KeyCode, KeyEventKind};
@@ -45,7 +46,6 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                 match popup {
                     CurrentPopup::AddPopup(add_popup) => add_popup.show(frame),
                     CurrentPopup::QuitPopup(quit_popup) => quit_popup.show(frame),
-                    _ => {}
                 }
             }
         })?;
@@ -74,6 +74,20 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
         if let Ok(message) = reciver.try_recv() {
             match message {
                 PopupMessages::ShowAddPopup => {}
+                PopupMessages::AddCred => match &current_popup {
+                    Some(CurrentPopup::AddPopup(add_popup)) => {
+                        let email = add_popup.email.lines()[0].clone();
+                        let password = add_popup.password.lines()[0].clone();
+                        let new_cred = Cred::new(email.to_string(), password.to_string());
+                        let mut auth_list: AuthList = AuthList::new();
+                        if !auth_list.check_exist(&new_cred) {
+                            auth_list.add_cred(&new_cred);
+                            auth_list.set_current(&new_cred);
+                            auth_list.write_file();
+                        }
+                    }
+                    _ => {}
+                },
                 PopupMessages::HideAddPopup => {
                     current_popup = None;
                 }

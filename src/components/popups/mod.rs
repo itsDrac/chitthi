@@ -7,7 +7,7 @@ mod quit;
 
 pub trait Popup {
     fn show(&mut self, frame: &mut Frame);
-    fn hide(&mut self);
+    fn hide(self);
     fn handle_input(&mut self);
 }
 

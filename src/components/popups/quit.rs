@@ -89,24 +89,23 @@ impl Popup for Quit {
         let _ = self.screen_sender.send(PopupMessages::ShowQuitPopup);
     }
 
-    fn hide(&mut self) {}
+    fn hide(self) {
+        self.screen_sender.send(PopupMessages::HideQuitPopup);
+    }
     fn handle_input(&mut self) {
         if let event::Event::Key(key) = event::read().unwrap() {
             if key.kind == KeyEventKind::Press {
-                if key.code == KeyCode::Tab {
-                    match self.current_section {
+                match key.code {
+                    KeyCode::Tab => match self.current_section {
                         Section::No => self.current_section = Section::Yes,
                         Section::Yes => self.current_section = Section::No,
+                    },
+                    KeyCode::Enter => match self.current_section {
+                        Section::Yes => self.screen_sender.send(PopupMessages::QuitApp),
+                        Section::No => self.screen_sender.send(PopupMessages::HideQuitPopup),
                     }
-                }
-            } else if key.code == KeyCode::Enter {
-                match self.current_section {
-                    Section::Yes => {
-                        self.screen_sender.send(PopupMessages::QuitApp);
-                    }
-                    Section::No => {
-                        self.screen_sender.send(PopupMessages::HideQuitPopup);
-                    }
+                    .unwrap(),
+                    _ => {}
                 }
             }
         }

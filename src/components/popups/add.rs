@@ -124,6 +124,7 @@ impl<'ta> Add<'ta> {
         let password = self.password.lines()[0].clone();
         if email.ends_with("@gmail.com") && !password.is_empty() {
             self.is_valid = Some(true);
+            return;
         }
         self.is_valid = Some(false);
     }
@@ -162,22 +163,21 @@ impl<'ta> Popup for Add<'ta> {
         let _ = self.screen_sender.send(PopupMessages::ShowAddPopup);
     }
 
-    fn hide(&mut self) {
+    fn hide(self) {
         let _ = self.screen_sender.send(PopupMessages::HideAddPopup);
     }
 
     fn handle_input(&mut self) {
         if let event::Event::Key(key) = event::read().unwrap() {
             if key.kind == KeyEventKind::Press {
-                if key.code == KeyCode::Tab {
-                    match self.current_section {
+                match key.code {
+                    KeyCode::Tab => match self.current_section {
                         Section::EmailField => self.current_section = Section::PasswordField,
                         Section::PasswordField => self.current_section = Section::AddButton,
                         Section::AddButton => self.current_section = Section::CancelButton,
                         Section::CancelButton => self.current_section = Section::EmailField,
-                    }
-                } else if key.code == KeyCode::Enter {
-                    match self.current_section {
+                    },
+                    KeyCode::Enter => match self.current_section {
                         Section::AddButton => {
                             self.check_valid();
                             if self.is_valid == Some(true) {
@@ -190,17 +190,26 @@ impl<'ta> Popup for Add<'ta> {
                         }
                         Section::EmailField => self.current_section = Section::PasswordField,
                         Section::PasswordField => self.current_section = Section::AddButton,
-                    }
-                } else {
-                    match self.current_section {
+                    },
+                    KeyCode::Char(ch) => match self.current_section {
                         Section::EmailField => {
-                            self.email.input(key);
+                            self.email.insert_char(ch);
                         }
                         Section::PasswordField => {
-                            self.password.input(key);
+                            self.password.insert_char(ch);
                         }
                         _ => {}
-                    }
+                    },
+                    KeyCode::Backspace => match self.current_section {
+                        Section::EmailField => {
+                            self.email.delete_char();
+                        }
+                        Section::PasswordField => {
+                            self.password.delete_char();
+                        }
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
         }
