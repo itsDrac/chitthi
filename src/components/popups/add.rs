@@ -182,7 +182,7 @@ impl<'ta> Popup for Add<'ta> {
                             self.check_valid();
                             if self.is_valid == Some(true) {
                                 self.screen_sender.send(PopupMessages::AddCred);
-                                self.screen_sender.send(PopupMessages::HideAddPopup);
+                                // self.screen_sender.send(PopupMessages::HideAddPopup);
                             }
                         }
                         Section::CancelButton => {

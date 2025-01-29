@@ -85,6 +85,7 @@ pub fn run(terminal: &mut DefaultTerminal) -> io::Result<()> {
                             auth_list.set_current(&new_cred);
                             auth_list.write_file();
                         }
+                        current_popup = None;
                     }
                     _ => {}
                 },
